@@ -83,16 +83,19 @@ angular.module('d4', []).directive('d4', function($window) {
 		if (!data) return;
 		
 		// set up variables
-		var outerRadius = options.outerRadius / 100 || 0.9,
+		var outerRadius = options.outerRadius / 100 || 0.7,
 			innerRadius = options.innerRadius / 100 || 0,
+			textRadius = options.textRadius || 1.1,
 			offsetX = options.offsetX || 0,
 			offsetY = options.offsetY || 0,
 			showLabels = options.showLabels || true,
 			strokeColor = options.strokeColor || 'white',
 			margin = options.margin || 0,
+			fontSize = options.fontSize || 16,
+			textFormat = options.textFormat || function(l, k) { return l + "(" + k + ")";},
 			width = options.width || d3.select(element[0]).node().offsetWidth - margin,
 			height = options.height || 500,
-			min = Math.min(width, height),
+			radius = Math.min(width, height) / 2,
 			color = d3.scale.category20();
 
 		svg.attr("width", width)
@@ -103,8 +106,11 @@ angular.module('d4', []).directive('d4', function($window) {
 			.value(function(d){ return d.value; });
 		
 		var arc = d3.svg.arc()
-		        .outerRadius(min / 2 * outerRadius)
-		        .innerRadius(min / 2 * innerRadius);
+		        .outerRadius(radius * outerRadius)
+		        .innerRadius(radius * innerRadius);
+		var textArc = d3.svg.arc()
+				.outerRadius(radius * outerRadius * 2 * textRadius)
+				.innerRadius(radius * innerRadius * 2 * textRadius);
 
 		var g = svg.append('g')
 			.attr('transform', 'translate(' + (width / 2 + offsetX) + ',' + (height / 2 + offsetY) + ')');
@@ -120,11 +126,27 @@ angular.module('d4', []).directive('d4', function($window) {
 	    	.style('fill', function(d, i){ return color(i) });
 
 	    // pie labels
-	    slice.enter()
+	    var labels = g.selectAll("text")
+	    	.data(pie(data));
+
+		function midAngle(d){
+			return d.startAngle + (d.endAngle - d.startAngle)/2;
+		}
+
+	    labels.enter()
 	    	.append("text")
-			.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-			.attr("dy", ".5em")
-			.style("text-anchor", "middle")
-			.text(function(d) { return d.data.label + "(" + d.data.value +")"});
+			.attr("dy", "0.3em")
+			.style("font-size", fontSize)
+			.text(function(d) { 
+				return textFormat(d.data.label, d.data.value);
+			})
+			.attr("transform", function(d) {
+				var pos = textArc.centroid(d);
+				pos[0] = radius * (midAngle(d) < Math.PI ? 1 : -1);
+				return "translate(" + textArc.centroid(d) + ")";
+			})
+			.style("text-anchor", function(d) {
+				return midAngle(d) < Math.PI ? "start" : "end";
+			});
 	} 
 });
