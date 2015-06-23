@@ -21,8 +21,10 @@ angular.module('d4', []).directive('d4', function($window) {
 			
 			if (options.chart === "horizontalBar") {
 				drawHorizontalBarChart(svg, data, options, element);
-			} else if (options.chart === "pieChart") {
+			} else if (options.chart === "pie") {
 				drawPieChart(svg, data, options, element);
+			} else if (options.chart === "bubble") {
+				drawBubbleChart(svg, data, options, element);
 			}
 		}
 
@@ -149,4 +151,49 @@ angular.module('d4', []).directive('d4', function($window) {
 				return midAngle(d) < Math.PI ? "start" : "end";
 			});
 	} 
+
+	function drawBubbleChart(svg, data, options, element) {
+		// set up variables
+		var padding = options.padding || 0,
+			fontSize = options.fontSize || 16,
+			fitHeight = options.fitHeight || false,
+			width = options.width || d3.select(element[0]).node().offsetWidth,
+			height = options.height || width,
+			showLabels = options.showLabels || true,
+			color = d3.scale.category20();
+
+		svg.attr("width", width)
+			.attr("height", height);
+
+		var pack = d3.layout.pack()
+			.size([width, height])
+			.padding(5);
+
+		var nodes = pack.nodes({children: angular.copy(data)});
+		// remove root
+		nodes.shift();
+		var top = fitHeight ? d3.min(nodes, function(d) { return d.y - d.r; }) : 0;
+		if (fitHeight) {
+			var bottom = d3.max(nodes, function(d) { return d.y + d.r; });
+			svg.attr("height", bottom - top);
+		}
+
+		var node = svg.selectAll(".node")
+			.data(nodes).enter()
+				.append("g")
+				.attr("class", "node")
+				.attr("transform", function(d) {return "translate(" + d.x + "," + (d.y - top) + ")";});
+
+		node.append("circle")
+			.attr("fill", function(d) { return (d.children) ? "none" : color(d.label);})
+			.attr("r", function(d) { return d.r; });
+
+		if (showLabels) {
+			node.append("text")
+		      .attr("dy", ".3em")
+		      .style("font-size", fontSize)
+		      .style("text-anchor", "middle")
+		      .text(function(d) { return d.label.substring(0, 5) || d.label});
+	 	}
+	}   
 });
