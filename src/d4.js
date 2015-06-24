@@ -195,5 +195,48 @@ angular.module('d4', []).directive('d4', function($window) {
 		      .style("text-anchor", "middle")
 		      .text(function(d) { return d.label.substring(0, 5) || d.label});
 	 	}
-	}   
+	}
+
+	function drawHeatTable(svg, data, options, element) {
+		var colorScale = d3.scale.linear()
+			.domain([d3.min(data, function (d) { return d.value; }), d3.max(data, function (d) { return d.value; })])
+			.range(["#1A237E", "#D50000"])
+			.interpolate(d3.interpolateHcl);
+
+		// transform data to table style
+		var tableData = [], rowData = [];
+		for (var i = 0; i < data.length; i++) {
+			if (i != 0 && i % col.length === 0) {
+				tableData.push(rowData);
+				rowData = [];
+			}
+			rowData.push(data[i]);
+		}
+
+		var table = d3.select(element[0]).append("table")
+			.attr("class", "table");
+		var thead = table.append("thead");
+		var tbody = table.append("tbody");
+
+		// append column headers
+		var headRow = thead.append("tr");
+		headRow.append("th");
+		headRow.selectAll("th.col").data(col)
+			.enter().append("th")
+				.text(function(d) { return d; });
+
+		// append row headers
+		var tr = tbody.selectAll("tr").data(tableData)
+			.enter().append("tr")
+				.append("th")
+				.text(function(d, i) {return row[i];});
+
+		tbody.selectAll("tr").each(function(data, i) {
+			d3.select(this).selectAll("td").data(data)
+				.enter().append("td")
+				.style("background-color", function(d) { return colorScale(d.value); })
+				.style("color", "#FFFFFF")
+				.text(function(d){ return d.value });
+		});
+	}
 });
